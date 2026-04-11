@@ -11,6 +11,7 @@ import adminOrderRoutes from "./routes/admin-order.routes";
 import userConversationRoutes from "./routes/user-conversation.routes";
 import adminConversationRoutes from "./routes/admin-conversation.routes";
 import adminUserRoutes from "./routes/admin-user.routes";
+import adminInvoiceRoutes from "./routes/admin-invoice.routes";
 
 export const app = express();
 
@@ -19,7 +20,15 @@ export const app = express();
 // ---------------------------------------------------------------------------
 app.use(
   cors({
-    origin: (process.env.CORS_FRONTEND || "*").split(",").map((s) => s.trim()),
+    origin: (origin, callback) => {
+      const allowed = (process.env.CORS_FRONTEND || "").split(",").map((s) => s.trim()).filter(Boolean);
+      // Nessuna origin (es. curl) o origin nell'allowlist → OK
+      if (!origin || allowed.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin not allowed — ${origin}`));
+      }
+    },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -49,6 +58,7 @@ app.use(adminOrderRoutes);
 app.use(userConversationRoutes);
 app.use(adminConversationRoutes);
 app.use(adminUserRoutes);
+app.use(adminInvoiceRoutes);
 
 // ---------------------------------------------------------------------------
 // Error handler (deve essere l'ultimo middleware)

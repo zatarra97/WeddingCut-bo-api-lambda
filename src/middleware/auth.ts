@@ -42,7 +42,10 @@ function parseGroups(raw: unknown): string[] {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed.map(String);
     } catch {
-      // Se non e JSON, potrebbe essere un singolo gruppo
+      // Formato API Gateway HTTP API: "[Admin]" o "[Admin, User]" (non JSON valido)
+      if (raw.startsWith("[") && raw.endsWith("]")) {
+        return raw.slice(1, -1).split(",").map((s) => s.trim()).filter(Boolean);
+      }
       return raw ? [raw] : [];
     }
   }

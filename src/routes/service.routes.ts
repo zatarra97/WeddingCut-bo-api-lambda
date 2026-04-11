@@ -7,6 +7,17 @@ import { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 
 const router = Router();
 
+const JSON_FIELDS = ["priceTiers"];
+
+function parseJsonFields(row: RowDataPacket): RowDataPacket {
+  for (const field of JSON_FIELDS) {
+    if (typeof row[field] === "string") {
+      try { row[field] = JSON.parse(row[field]); } catch { /* lascia stringa */ }
+    }
+  }
+  return row;
+}
+
 // POST /services (admin)
 router.post(
   "/services",
@@ -17,12 +28,12 @@ router.post(
       body.publicId = randomUUID();
       const fields = [
         "publicId", "name", "description", "durationDescription",
-        "minDuration", "maxDuration", "orientation",
-        "priceVertical", "priceHorizontal", "priceBoth", "additionalOptions",
+        "category", "pricingType", "basePrice", "percentageValue",
+        "priceTiers", "restrictedToService", "sortOrder", "isActive",
       ];
       const cols = fields.filter((f) => body[f] !== undefined);
       const vals = cols.map((f) =>
-        f === "additionalOptions" ? JSON.stringify(body[f]) : body[f]
+        JSON_FIELDS.includes(f) ? JSON.stringify(body[f]) : body[f]
       );
       const placeholders = cols.map(() => "?").join(", ");
 
@@ -36,7 +47,7 @@ router.post(
         "SELECT * FROM services WHERE id = ?",
         [result.insertId]
       );
-      res.status(201).json(rows[0]);
+      res.status(201).json(parseJsonFields(rows[0]));
     } catch (err) {
       next(err);
     }
@@ -101,7 +112,7 @@ router.get(
       }
 
       const [rows] = await pool.execute<RowDataPacket[]>(sql, params);
-      res.json(rows);
+      res.json(rows.map(parseJsonFields));
     } catch (err) {
       next(err);
     }
@@ -122,7 +133,7 @@ router.get(
         res.status(404).json({ error: { statusCode: 404, message: "Servizio non trovato." } });
         return;
       }
-      res.json(rows[0]);
+      res.json(parseJsonFields(rows[0]));
     } catch (err) {
       next(err);
     }
@@ -141,7 +152,7 @@ router.patch(
       for (const [key, value] of Object.entries(body)) {
         if (key === "id" || key === "createdAt" || key === "updatedAt") continue;
         sets.push(`\`${key}\` = ?`);
-        vals.push(key === "additionalOptions" ? JSON.stringify(value) : value);
+        vals.push(JSON_FIELDS.includes(key) ? JSON.stringify(value) : value);
       }
       if (!sets.length) {
         res.status(204).send();
@@ -171,15 +182,17 @@ router.put(
       await pool.execute(
         `UPDATE services SET
           publicId = ?, name = ?, description = ?, durationDescription = ?,
-          minDuration = ?, maxDuration = ?, orientation = ?,
-          priceVertical = ?, priceHorizontal = ?, priceBoth = ?,
-          additionalOptions = ?
+          category = ?, pricingType = ?, basePrice = ?, percentageValue = ?,
+          priceTiers = ?, restrictedToService = ?, sortOrder = ?, isActive = ?
         WHERE id = ?`,
         [
-          body.publicId, body.name, body.description, body.durationDescription || null,
-          body.minDuration || null, body.maxDuration || null, body.orientation || "both",
-          body.priceVertical || null, body.priceHorizontal || null, body.priceBoth || null,
-          body.additionalOptions ? JSON.stringify(body.additionalOptions) : null,
+          body.publicId, body.name, body.description, body.durationDescription ?? null,
+          body.category, body.pricingType,
+          body.basePrice ?? null, body.percentageValue ?? null,
+          body.priceTiers ? JSON.stringify(body.priceTiers) : null,
+          body.restrictedToService ?? null,
+          body.sortOrder ?? null,
+          body.isActive ?? 1,
           req.params.id,
         ]
       );

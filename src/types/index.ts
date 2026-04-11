@@ -16,19 +16,25 @@ export interface AuthenticatedRequest extends Request {
 // ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
+export interface PriceTier {
+  label: string;
+  price: number;
+}
+
 export interface Service {
   id?: number;
   publicId: string;
   name: string;
   description: string;
   durationDescription?: string | null;
-  minDuration?: number | null;
-  maxDuration?: number | null;
-  orientation: "vertical" | "horizontal" | "both";
-  priceVertical?: number | null;
-  priceHorizontal?: number | null;
-  priceBoth?: number | null;
-  additionalOptions?: any;
+  category: "main" | "extra" | "delivery";
+  pricingType: "fixed" | "tiered" | "percentage";
+  basePrice?: number | null;
+  percentageValue?: number | null;
+  priceTiers?: PriceTier[] | null;
+  restrictedToService?: string | null;
+  sortOrder?: number | null;
+  isActive?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

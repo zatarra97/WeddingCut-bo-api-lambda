@@ -11,16 +11,19 @@ CREATE TABLE IF NOT EXISTS `services` (
   `name`                VARCHAR(200)      NOT NULL,
   `description`         TEXT              NOT NULL,
   `durationDescription` VARCHAR(500)      DEFAULT NULL,
-  `minDuration`         SMALLINT UNSIGNED DEFAULT NULL,
-  `maxDuration`         SMALLINT UNSIGNED DEFAULT NULL,
-  `orientation`         ENUM('vertical','horizontal','both') NOT NULL DEFAULT 'both',
-  `priceVertical`       DECIMAL(10,2)     DEFAULT NULL,
-  `priceHorizontal`     DECIMAL(10,2)     DEFAULT NULL,
-  `priceBoth`           DECIMAL(10,2)     DEFAULT NULL,
-  `additionalOptions`   JSON              DEFAULT NULL,
+  `category`            ENUM('main','extra','delivery') NOT NULL DEFAULT 'main',
+  `pricingType`         ENUM('fixed','tiered','percentage') NOT NULL DEFAULT 'fixed',
+  `basePrice`           DECIMAL(10,2)     DEFAULT NULL,
+  `percentageValue`     DECIMAL(5,2)      DEFAULT NULL,
+  `priceTiers`          JSON              DEFAULT NULL,
+  `restrictedToService` VARCHAR(36)       DEFAULT NULL,
+  `sortOrder`           SMALLINT UNSIGNED DEFAULT NULL,
+  `isActive`            TINYINT UNSIGNED  NOT NULL DEFAULT 1,
   `createdAt`           TIMESTAMP         NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updatedAt`           TIMESTAMP         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  INDEX `idx_services_category` (`category`),
+  INDEX `idx_services_sortOrder` (`sortOrder`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ENTITÀ: orders
@@ -87,3 +90,24 @@ CREATE TABLE IF NOT EXISTS `messages` (
   INDEX `idx_messages_conversationId` (`conversationId`),
   CONSTRAINT `fk_messages_conversation` FOREIGN KEY (`conversationId`) REFERENCES `conversations`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- MIGRATION: aggiornamento tabella services (listino 2025)
+-- Da eseguire su RDS se la tabella esiste già
+-- ============================================================
+ALTER TABLE `services`
+  DROP COLUMN IF EXISTS `minDuration`,
+  DROP COLUMN IF EXISTS `maxDuration`,
+  DROP COLUMN IF EXISTS `orientation`,
+  DROP COLUMN IF EXISTS `priceVertical`,
+  DROP COLUMN IF EXISTS `priceHorizontal`,
+  DROP COLUMN IF EXISTS `priceBoth`,
+  DROP COLUMN IF EXISTS `additionalOptions`,
+  ADD COLUMN IF NOT EXISTS `category`            ENUM('main','extra','delivery') NOT NULL DEFAULT 'main'  AFTER `durationDescription`,
+  ADD COLUMN IF NOT EXISTS `pricingType`         ENUM('fixed','tiered','percentage') NOT NULL DEFAULT 'fixed' AFTER `category`,
+  ADD COLUMN IF NOT EXISTS `basePrice`           DECIMAL(10,2)     DEFAULT NULL AFTER `pricingType`,
+  ADD COLUMN IF NOT EXISTS `percentageValue`     DECIMAL(5,2)      DEFAULT NULL AFTER `basePrice`,
+  ADD COLUMN IF NOT EXISTS `priceTiers`          JSON              DEFAULT NULL AFTER `percentageValue`,
+  ADD COLUMN IF NOT EXISTS `restrictedToService` VARCHAR(36)       DEFAULT NULL AFTER `priceTiers`,
+  ADD COLUMN IF NOT EXISTS `sortOrder`           SMALLINT UNSIGNED DEFAULT NULL AFTER `restrictedToService`,
+  ADD COLUMN IF NOT EXISTS `isActive`            TINYINT UNSIGNED  NOT NULL DEFAULT 1 AFTER `sortOrder`;
