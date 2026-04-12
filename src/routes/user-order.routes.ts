@@ -32,16 +32,34 @@ router.post(
       const pool = getPool();
 
       // Determina se è un ordine batch (entries[] con almeno 2 elementi)
-      const rawEntries: { coupleName: string; weddingDate: string }[] = Array.isArray(body.entries) && body.entries.length > 0
+      // Ogni entry può portare la propria config servizi
+      const rawEntries: Array<{
+        coupleName: string; weddingDate: string;
+        selectedServices?: any; deliveryMethod?: string; materialLink?: string;
+        materialSizeGb?: number; cameraCount?: string;
+        exportFps?: string; exportBitrate?: string; exportAspect?: string; exportResolution?: string;
+        servicesTotal?: number; cameraSurcharge?: number; totalPrice?: number;
+      }> = Array.isArray(body.entries) && body.entries.length > 0
         ? body.entries
-        : [{ coupleName: body.coupleName, weddingDate: body.weddingDate }];
+        : [{
+            coupleName: body.coupleName, weddingDate: body.weddingDate,
+            selectedServices: body.selectedServices, deliveryMethod: body.deliveryMethod,
+            materialLink: body.materialLink, materialSizeGb: body.materialSizeGb,
+            cameraCount: body.cameraCount, exportFps: body.exportFps,
+            exportBitrate: body.exportBitrate, exportAspect: body.exportAspect,
+            exportResolution: body.exportResolution, servicesTotal: body.servicesTotal,
+            cameraSurcharge: body.cameraSurcharge, totalPrice: body.totalPrice,
+          }];
 
       const isBatch = rawEntries.length > 1 ? 1 : 0;
 
-      // Prima entry come "primaria" per retrocompatibilità
+      // Prima entry come "primaria" per retrocompatibilità colonne ordine padre
       const primaryEntry = rawEntries[0];
       const weddingDate = normalizeWeddingDate(primaryEntry.weddingDate);
       const publicId = randomUUID();
+
+      // totalPrice ordine = somma dei totalPrice delle entries
+      const orderTotalPrice = rawEntries.reduce((sum, e) => sum + (e.totalPrice || 0), 0);
 
       const fields: Record<string, any> = {
         publicId,
@@ -49,22 +67,21 @@ router.post(
         isBatch,
         coupleName: primaryEntry.coupleName,
         weddingDate,
-        deliveryMethod: body.deliveryMethod || null,
-        materialLink: body.materialLink || null,
-        materialSizeGb: body.materialSizeGb,
-        cameraCount: body.cameraCount || null,
+        deliveryMethod: primaryEntry.deliveryMethod || null,
+        materialLink: primaryEntry.materialLink || null,
+        materialSizeGb: primaryEntry.materialSizeGb || null,
+        cameraCount: primaryEntry.cameraCount || null,
         generalNotes: body.generalNotes || null,
         referenceVideo: body.referenceVideo || null,
-        exportFps: body.exportFps || null,
-        exportBitrate: body.exportBitrate || null,
-        exportAspect: body.exportAspect || null,
-        exportResolution: body.exportResolution || null,
-        selectedServices: body.selectedServices ? JSON.stringify(body.selectedServices) : null,
-        servicesTotal: body.servicesTotal || null,
-        cameraSurcharge: body.cameraSurcharge || 0,
-        totalPrice: body.totalPrice || null,
+        exportFps: primaryEntry.exportFps || null,
+        exportBitrate: primaryEntry.exportBitrate || null,
+        exportAspect: primaryEntry.exportAspect || null,
+        exportResolution: primaryEntry.exportResolution || null,
+        selectedServices: primaryEntry.selectedServices ? JSON.stringify(primaryEntry.selectedServices) : null,
+        servicesTotal: primaryEntry.servicesTotal || null,
+        cameraSurcharge: primaryEntry.cameraSurcharge || null,
+        totalPrice: orderTotalPrice || null,
         status: "pending",
-        desiredDeliveryDate: body.desiredDeliveryDate || null,
       };
 
       const cols = Object.keys(fields);
@@ -78,14 +95,32 @@ router.post(
 
       const orderId = result.insertId;
 
-      // Crea le entries per ogni matrimonio
+      // Crea le entries per ogni matrimonio con la propria config servizi
       for (let i = 0; i < rawEntries.length; i++) {
         const entry = rawEntries[i];
         const entryDate = normalizeWeddingDate(entry.weddingDate);
         await pool.execute(
-          `INSERT INTO order_entries (publicId, orderId, coupleName, weddingDate, status, sortOrder)
-           VALUES (?, ?, ?, ?, 'pending', ?)`,
-          [randomUUID(), orderId, entry.coupleName, entryDate, i]
+          `INSERT INTO order_entries
+             (publicId, orderId, coupleName, weddingDate, status, sortOrder,
+              selectedServices, deliveryMethod, materialLink, materialSizeGb, cameraCount,
+              exportFps, exportBitrate, exportAspect, exportResolution,
+              servicesTotal, cameraSurcharge, totalPrice)
+           VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            randomUUID(), orderId, entry.coupleName, entryDate, i,
+            entry.selectedServices ? JSON.stringify(entry.selectedServices) : null,
+            entry.deliveryMethod || null,
+            entry.materialLink || null,
+            entry.materialSizeGb || null,
+            entry.cameraCount || null,
+            entry.exportFps || null,
+            entry.exportBitrate || null,
+            entry.exportAspect || null,
+            entry.exportResolution || null,
+            entry.servicesTotal || null,
+            entry.cameraSurcharge || null,
+            entry.totalPrice || null,
+          ]
         );
       }
 

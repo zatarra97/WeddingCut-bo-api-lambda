@@ -49,6 +49,19 @@ export interface OrderEntry {
   adminNotes?: string | null;
   deliveryLink?: string | null;
   sortOrder?: number;
+  // Per-entry service config (redesign ordini)
+  selectedServices?: any;
+  deliveryMethod?: "cloud_link" | "upload_request" | null;
+  materialLink?: string | null;
+  materialSizeGb?: number | null;
+  cameraCount?: "1-4" | "5-6" | "7+" | null;
+  exportFps?: string | null;
+  exportBitrate?: string | null;
+  exportAspect?: string | null;
+  exportResolution?: string | null;
+  servicesTotal?: number | null;
+  cameraSurcharge?: number | null;
+  totalPrice?: number | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -60,9 +73,9 @@ export interface Order {
   isBatch?: number;
   coupleName: string;
   weddingDate: string;
-  deliveryMethod: "cloud_link" | "upload_request";
+  deliveryMethod?: "cloud_link" | "upload_request" | null;
   materialLink?: string | null;
-  materialSizeGb: number;
+  materialSizeGb?: number | null;
   cameraCount?: "1-4" | "5-6" | "7+" | null;
   generalNotes?: string | null;
   referenceVideo?: string | null;

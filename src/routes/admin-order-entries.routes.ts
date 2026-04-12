@@ -30,12 +30,26 @@ router.patch(
       );
       if (!entryRows.length) throw createHttpError(404, "Matrimonio non trovato.");
 
-      const { adminNotes, deliveryLink } = req.body;
+      const body = req.body;
       const sets: string[] = [];
       const vals: any[] = [];
 
-      if (adminNotes !== undefined) { sets.push("`adminNotes` = ?"); vals.push(adminNotes); }
-      if (deliveryLink !== undefined) { sets.push("`deliveryLink` = ?"); vals.push(deliveryLink); }
+      const scalarFields = [
+        "adminNotes", "deliveryLink", "status",
+        "deliveryMethod", "materialLink", "materialSizeGb", "cameraCount",
+        "exportFps", "exportBitrate", "exportAspect", "exportResolution",
+        "servicesTotal", "cameraSurcharge", "totalPrice",
+      ];
+      for (const field of scalarFields) {
+        if (body[field] !== undefined) {
+          sets.push(`\`${field}\` = ?`);
+          vals.push(body[field]);
+        }
+      }
+      if (body.selectedServices !== undefined) {
+        sets.push("`selectedServices` = ?");
+        vals.push(body.selectedServices ? JSON.stringify(body.selectedServices) : null);
+      }
 
       if (sets.length) {
         vals.push(entryRows[0].id);
@@ -43,6 +57,16 @@ router.patch(
           `UPDATE order_entries SET ${sets.join(", ")} WHERE id = ?`,
           vals
         );
+
+        // Ricalcola totalPrice ordine padre = SUM delle entries
+        if (body.totalPrice !== undefined) {
+          await pool.execute(
+            `UPDATE orders SET totalPrice = (
+               SELECT COALESCE(SUM(totalPrice), 0) FROM order_entries WHERE orderId = ?
+             ) WHERE id = ?`,
+            [orderRows[0].id, orderRows[0].id]
+          );
+        }
       }
 
       res.status(204).send();
@@ -86,10 +110,25 @@ router.post(
       const normalizedDate = weddingDate.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? weddingDate;
       const publicId = randomUUID();
 
+      const { selectedServices, deliveryMethod, materialLink, materialSizeGb, cameraCount,
+              exportFps, exportBitrate, exportAspect, exportResolution,
+              servicesTotal, cameraSurcharge, totalPrice } = req.body;
+
       const [result] = await pool.execute<ResultSetHeader>(
-        `INSERT INTO order_entries (publicId, orderId, coupleName, weddingDate, status, sortOrder)
-         VALUES (?, ?, ?, ?, 'pending', ?)`,
-        [publicId, orderId, coupleName, normalizedDate, nextSort]
+        `INSERT INTO order_entries
+           (publicId, orderId, coupleName, weddingDate, status, sortOrder,
+            selectedServices, deliveryMethod, materialLink, materialSizeGb, cameraCount,
+            exportFps, exportBitrate, exportAspect, exportResolution,
+            servicesTotal, cameraSurcharge, totalPrice)
+         VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          publicId, orderId, coupleName, normalizedDate, nextSort,
+          selectedServices ? JSON.stringify(selectedServices) : null,
+          deliveryMethod || null, materialLink || null, materialSizeGb || null,
+          cameraCount || null, exportFps || null, exportBitrate || null,
+          exportAspect || null, exportResolution || null,
+          servicesTotal || null, cameraSurcharge || null, totalPrice || null,
+        ]
       );
 
       // Segna l'ordine come batch se non lo era già

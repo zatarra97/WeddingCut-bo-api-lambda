@@ -135,6 +135,49 @@ FROM `orders` o
 WHERE o.`id` NOT IN (SELECT DISTINCT `orderId` FROM `order_entries`);
 
 -- ============================================================
+-- MIGRATION: per-entry service config (redesign creazione ordini)
+-- ============================================================
+
+-- 4. Aggiungi colonne di configurazione servizi a order_entries
+ALTER TABLE `order_entries`
+  ADD COLUMN IF NOT EXISTS `selectedServices` JSON                             DEFAULT NULL AFTER `deliveryLink`,
+  ADD COLUMN IF NOT EXISTS `deliveryMethod`   ENUM('cloud_link','upload_request') DEFAULT NULL AFTER `selectedServices`,
+  ADD COLUMN IF NOT EXISTS `materialLink`     VARCHAR(1000)                   DEFAULT NULL AFTER `deliveryMethod`,
+  ADD COLUMN IF NOT EXISTS `materialSizeGb`   DECIMAL(6,2)                    DEFAULT NULL AFTER `materialLink`,
+  ADD COLUMN IF NOT EXISTS `cameraCount`      ENUM('1-4','5-6','7+')          DEFAULT NULL AFTER `materialSizeGb`,
+  ADD COLUMN IF NOT EXISTS `exportFps`        VARCHAR(20)                     DEFAULT NULL AFTER `cameraCount`,
+  ADD COLUMN IF NOT EXISTS `exportBitrate`    VARCHAR(20)                     DEFAULT NULL AFTER `exportFps`,
+  ADD COLUMN IF NOT EXISTS `exportAspect`     VARCHAR(20)                     DEFAULT NULL AFTER `exportBitrate`,
+  ADD COLUMN IF NOT EXISTS `exportResolution` VARCHAR(20)                     DEFAULT NULL AFTER `exportAspect`,
+  ADD COLUMN IF NOT EXISTS `servicesTotal`    DECIMAL(10,2)                   DEFAULT NULL AFTER `exportResolution`,
+  ADD COLUMN IF NOT EXISTS `cameraSurcharge`  DECIMAL(10,2)                   DEFAULT NULL AFTER `servicesTotal`,
+  ADD COLUMN IF NOT EXISTS `totalPrice`       DECIMAL(10,2)                   DEFAULT NULL AFTER `cameraSurcharge`;
+
+-- 5. Copia la config servizi dall'ordine padre nelle entries già esistenti
+UPDATE `order_entries` oe
+JOIN `orders` o ON o.id = oe.orderId
+SET oe.selectedServices = o.selectedServices,
+    oe.deliveryMethod   = o.deliveryMethod,
+    oe.materialLink     = o.materialLink,
+    oe.materialSizeGb   = o.materialSizeGb,
+    oe.cameraCount      = o.cameraCount,
+    oe.exportFps        = o.exportFps,
+    oe.exportBitrate    = o.exportBitrate,
+    oe.exportAspect     = o.exportAspect,
+    oe.exportResolution = o.exportResolution,
+    oe.servicesTotal    = o.servicesTotal,
+    oe.cameraSurcharge  = o.cameraSurcharge,
+    oe.totalPrice       = o.totalPrice
+WHERE oe.selectedServices IS NULL;
+
+-- 6. Rendi nullable i campi order-level che ora vivono nelle entries
+ALTER TABLE `orders`
+  MODIFY COLUMN `deliveryMethod`  ENUM('cloud_link','upload_request') DEFAULT NULL,
+  MODIFY COLUMN `materialSizeGb`  DECIMAL(6,2)  DEFAULT NULL,
+  MODIFY COLUMN `cameraCount`     ENUM('1-4','5-6','7+') DEFAULT NULL,
+  MODIFY COLUMN `cameraSurcharge` DECIMAL(10,2) DEFAULT NULL;
+
+-- ============================================================
 -- MIGRATION: aggiornamento tabella services (listino 2025)
 -- Da eseguire su RDS se la tabella esiste già
 -- ============================================================
