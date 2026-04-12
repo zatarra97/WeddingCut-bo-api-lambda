@@ -12,6 +12,7 @@ import userConversationRoutes from "./routes/user-conversation.routes";
 import adminConversationRoutes from "./routes/admin-conversation.routes";
 import adminUserRoutes from "./routes/admin-user.routes";
 import adminInvoiceRoutes from "./routes/admin-invoice.routes";
+import adminOrderEntriesRoutes from "./routes/admin-order-entries.routes";
 
 export const app = express();
 
@@ -59,6 +60,7 @@ app.use(userConversationRoutes);
 app.use(adminConversationRoutes);
 app.use(adminUserRoutes);
 app.use(adminInvoiceRoutes);
+app.use(adminOrderEntriesRoutes);
 
 // ---------------------------------------------------------------------------
 // Error handler (deve essere l'ultimo middleware)

@@ -14,19 +14,25 @@ router.get(
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const pool = getPool();
-      let sql = "SELECT * FROM orders WHERE 1=1";
+      let sql = `
+        SELECT o.*,
+          (SELECT COUNT(*) FROM order_entries oe WHERE oe.orderId = o.id) AS entryCount,
+          (SELECT oe2.coupleName FROM order_entries oe2 WHERE oe2.orderId = o.id ORDER BY oe2.sortOrder LIMIT 1) AS primaryCoupleName
+        FROM orders o
+        WHERE 1=1
+      `;
       const params: any[] = [];
 
       if (req.query.status) {
-        sql += " AND status = ?";
+        sql += " AND o.status = ?";
         params.push(req.query.status);
       }
       if (req.query.userEmail) {
-        sql += " AND userEmail LIKE ?";
+        sql += " AND o.userEmail LIKE ?";
         params.push(`%${req.query.userEmail}%`);
       }
 
-      sql += " ORDER BY createdAt DESC";
+      sql += " ORDER BY o.createdAt DESC";
 
       if (req.query.limit) {
         sql += " LIMIT ?";
@@ -59,7 +65,11 @@ router.get(
       if (!rows.length) {
         throw createHttpError(404, "Ordine non trovato.");
       }
-      res.json(rows[0]);
+      const [entries] = await pool.execute<RowDataPacket[]>(
+        "SELECT * FROM order_entries WHERE orderId = ? ORDER BY sortOrder",
+        [rows[0].id]
+      );
+      res.json({ ...rows[0], entries });
     } catch (err) {
       next(err);
     }
@@ -85,7 +95,7 @@ router.patch(
       const sets: string[] = [];
       const vals: any[] = [];
       for (const [key, value] of Object.entries(body)) {
-        if (key === "id" || key === "publicId" || key === "createdAt") continue;
+        if (key === "id" || key === "publicId" || key === "createdAt" || key === "entries") continue;
         sets.push(`\`${key}\` = ?`);
         vals.push(key === "selectedServices" ? JSON.stringify(value) : value);
       }

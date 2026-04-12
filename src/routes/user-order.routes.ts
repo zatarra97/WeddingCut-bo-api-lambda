@@ -29,14 +29,25 @@ router.post(
     try {
       const email = req.user!.email;
       const body = req.body;
-      const weddingDate = normalizeWeddingDate(body.weddingDate);
+      const pool = getPool();
+
+      // Determina se è un ordine batch (entries[] con almeno 2 elementi)
+      const rawEntries: { coupleName: string; weddingDate: string }[] = Array.isArray(body.entries) && body.entries.length > 0
+        ? body.entries
+        : [{ coupleName: body.coupleName, weddingDate: body.weddingDate }];
+
+      const isBatch = rawEntries.length > 1 ? 1 : 0;
+
+      // Prima entry come "primaria" per retrocompatibilità
+      const primaryEntry = rawEntries[0];
+      const weddingDate = normalizeWeddingDate(primaryEntry.weddingDate);
       const publicId = randomUUID();
 
-      const pool = getPool();
       const fields: Record<string, any> = {
         publicId,
         userEmail: email,
-        coupleName: body.coupleName,
+        isBatch,
+        coupleName: primaryEntry.coupleName,
         weddingDate,
         deliveryMethod: body.deliveryMethod || null,
         materialLink: body.materialLink || null,
@@ -65,11 +76,30 @@ router.post(
         vals
       );
 
+      const orderId = result.insertId;
+
+      // Crea le entries per ogni matrimonio
+      for (let i = 0; i < rawEntries.length; i++) {
+        const entry = rawEntries[i];
+        const entryDate = normalizeWeddingDate(entry.weddingDate);
+        await pool.execute(
+          `INSERT INTO order_entries (publicId, orderId, coupleName, weddingDate, status, sortOrder)
+           VALUES (?, ?, ?, ?, 'pending', ?)`,
+          [randomUUID(), orderId, entry.coupleName, entryDate, i]
+        );
+      }
+
       const [rows] = await pool.execute<RowDataPacket[]>(
-        "SELECT * FROM orders WHERE id = ?",
-        [result.insertId]
+        `SELECT o.*,
+           (SELECT COUNT(*) FROM order_entries oe WHERE oe.orderId = o.id) AS entryCount
+         FROM orders o WHERE o.id = ?`,
+        [orderId]
       );
-      res.status(201).json(rows[0]);
+      const [entries] = await pool.execute<RowDataPacket[]>(
+        "SELECT * FROM order_entries WHERE orderId = ? ORDER BY sortOrder",
+        [orderId]
+      );
+      res.status(201).json({ ...rows[0], entries });
     } catch (err) {
       next(err);
     }
@@ -83,7 +113,15 @@ router.get(
     try {
       const email = req.user!.email;
       const pool = getPool();
-      let sql = "SELECT * FROM orders WHERE userEmail = ? ORDER BY createdAt DESC";
+
+      let sql = `
+        SELECT o.*,
+          (SELECT COUNT(*) FROM order_entries oe WHERE oe.orderId = o.id) AS entryCount,
+          (SELECT oe2.coupleName FROM order_entries oe2 WHERE oe2.orderId = o.id ORDER BY oe2.sortOrder LIMIT 1) AS primaryCoupleName
+        FROM orders o
+        WHERE o.userEmail = ?
+        ORDER BY o.createdAt DESC
+      `;
       const params: any[] = [email];
 
       if (req.query.limit) {
@@ -120,7 +158,11 @@ router.get(
       if (rows[0].userEmail !== email) {
         throw createHttpError(403, "Accesso negato.");
       }
-      res.json(rows[0]);
+      const [entries] = await pool.execute<RowDataPacket[]>(
+        "SELECT * FROM order_entries WHERE orderId = ? ORDER BY sortOrder",
+        [rows[0].id]
+      );
+      res.json({ ...rows[0], entries });
     } catch (err) {
       next(err);
     }

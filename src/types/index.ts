@@ -39,10 +39,25 @@ export interface Service {
   updatedAt?: Date;
 }
 
+export interface OrderEntry {
+  id?: number;
+  publicId: string;
+  orderId: number;
+  coupleName: string;
+  weddingDate: string;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  adminNotes?: string | null;
+  deliveryLink?: string | null;
+  sortOrder?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface Order {
   id?: number;
   publicId: string;
   userEmail: string;
+  isBatch?: number;
   coupleName: string;
   weddingDate: string;
   deliveryMethod: "cloud_link" | "upload_request";
@@ -64,6 +79,8 @@ export interface Order {
   deliveryLink?: string | null;
   desiredDeliveryDate?: string | null;
   invoiceUrl?: string | null;
+  entries?: OrderEntry[];
+  entryCount?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

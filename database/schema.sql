@@ -92,6 +92,49 @@ CREATE TABLE IF NOT EXISTS `messages` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- MIGRATION: ordini multi-matrimonio (batch orders)
+-- ============================================================
+
+-- 1. Aggiungi colonna isBatch alla tabella orders
+ALTER TABLE `orders`
+  ADD COLUMN IF NOT EXISTS `isBatch` TINYINT(1) NOT NULL DEFAULT 0 AFTER `userEmail`;
+
+-- 2. Crea tabella order_entries
+CREATE TABLE IF NOT EXISTS `order_entries` (
+  `id`           INT UNSIGNED      NOT NULL AUTO_INCREMENT,
+  `publicId`     VARCHAR(36)       NOT NULL UNIQUE,
+  `orderId`      INT UNSIGNED      NOT NULL,
+  `coupleName`   VARCHAR(300)      NOT NULL,
+  `weddingDate`  DATE              NOT NULL,
+  `status`       ENUM('pending','in_progress','completed','cancelled') NOT NULL DEFAULT 'pending',
+  `adminNotes`   TEXT              DEFAULT NULL,
+  `deliveryLink` VARCHAR(1000)     DEFAULT NULL,
+  `sortOrder`    SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  `createdAt`    TIMESTAMP         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt`    TIMESTAMP         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_order_entries_orderId` (`orderId`),
+  INDEX `idx_order_entries_status`  (`status`),
+  CONSTRAINT `fk_order_entries_order`
+    FOREIGN KEY (`orderId`) REFERENCES `orders`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3. Migrazione dati esistenti: crea 1 entry per ogni ordine già presente
+INSERT IGNORE INTO `order_entries`
+  (`publicId`, `orderId`, `coupleName`, `weddingDate`, `status`, `adminNotes`, `deliveryLink`, `sortOrder`)
+SELECT
+  UUID(),
+  o.`id`,
+  o.`coupleName`,
+  o.`weddingDate`,
+  o.`status`,
+  o.`adminNotes`,
+  o.`deliveryLink`,
+  0
+FROM `orders` o
+WHERE o.`id` NOT IN (SELECT DISTINCT `orderId` FROM `order_entries`);
+
+-- ============================================================
 -- MIGRATION: aggiornamento tabella services (listino 2025)
 -- Da eseguire su RDS se la tabella esiste già
 -- ============================================================
