@@ -8,38 +8,6 @@ import { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 
 const router = Router();
 
-type EntryStatus = "pending" | "in_progress" | "completed" | "cancelled";
-const STATUS_ORDER: EntryStatus[] = ["pending", "in_progress", "completed", "cancelled"];
-
-/** Ricalcola e aggiorna lo status dell'ordine padre in base alle entries. */
-async function syncOrderStatus(pool: ReturnType<typeof getPool>, orderId: number): Promise<void> {
-  const [entries] = await pool.execute<RowDataPacket[]>(
-    "SELECT status FROM order_entries WHERE orderId = ?",
-    [orderId]
-  );
-  if (!entries.length) return;
-
-  const statuses = entries.map((e) => e.status as EntryStatus);
-  const allCompleted = statuses.every((s) => s === "completed" || s === "cancelled");
-  const anyInProgress = statuses.some((s) => s === "in_progress");
-  const allPending = statuses.every((s) => s === "pending");
-
-  let newStatus: EntryStatus;
-  if (allPending) {
-    newStatus = "pending";
-  } else if (allCompleted) {
-    newStatus = "completed";
-  } else if (anyInProgress) {
-    newStatus = "in_progress";
-  } else {
-    // Mix: almeno una in_progress o completed → in_progress
-    const worstIdx = Math.max(...statuses.map((s) => STATUS_ORDER.indexOf(s)));
-    newStatus = STATUS_ORDER[worstIdx] ?? "in_progress";
-  }
-
-  await pool.execute("UPDATE orders SET status = ? WHERE id = ?", [newStatus, orderId]);
-}
-
 // PATCH /admin/orders/:publicId/entries/:entryPublicId
 router.patch(
   "/admin/orders/:publicId/entries/:entryPublicId",
@@ -62,11 +30,10 @@ router.patch(
       );
       if (!entryRows.length) throw createHttpError(404, "Matrimonio non trovato.");
 
-      const { status, adminNotes, deliveryLink } = req.body;
+      const { adminNotes, deliveryLink } = req.body;
       const sets: string[] = [];
       const vals: any[] = [];
 
-      if (status !== undefined) { sets.push("`status` = ?"); vals.push(status); }
       if (adminNotes !== undefined) { sets.push("`adminNotes` = ?"); vals.push(adminNotes); }
       if (deliveryLink !== undefined) { sets.push("`deliveryLink` = ?"); vals.push(deliveryLink); }
 
@@ -77,9 +44,6 @@ router.patch(
           vals
         );
       }
-
-      // Aggiorna status ordine padre
-      await syncOrderStatus(pool, orderRows[0].id);
 
       res.status(204).send();
     } catch (err) {
