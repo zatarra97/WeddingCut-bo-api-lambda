@@ -181,6 +181,38 @@ ALTER TABLE `orders`
 -- MIGRATION: aggiornamento tabella services (listino 2025)
 -- Da eseguire su RDS se la tabella esiste già
 -- ============================================================
+-- ============================================================
+-- MIGRATION: state machine (draft, quote_ready, under_review, awaiting_payment)
+-- ============================================================
+
+-- Espandi ENUM status ordini
+ALTER TABLE `orders`
+  MODIFY COLUMN `status` ENUM('draft','pending','quote_ready','in_progress','under_review','awaiting_payment','completed','cancelled') NOT NULL DEFAULT 'pending';
+
+-- Espandi ENUM status entries
+ALTER TABLE `order_entries`
+  MODIFY COLUMN `status` ENUM('pending','in_progress','under_review','revision_requested','revision_approved','completed','cancelled') NOT NULL DEFAULT 'pending';
+
+-- Aggiungi colonne review a order_entries
+ALTER TABLE `order_entries`
+  ADD COLUMN `previewLink` VARCHAR(1000) DEFAULT NULL AFTER `deliveryLink`,
+  ADD COLUMN `userRevisionNotes` TEXT DEFAULT NULL AFTER `previewLink`;
+
+-- Aggiungi colonne preventivo/fattura a orders
+ALTER TABLE `orders`
+  ADD COLUMN `invoiceLink` VARCHAR(1000) DEFAULT NULL AFTER `deliveryLink`,
+  ADD COLUMN `proposedTotalPrice` DECIMAL(10,2) DEFAULT NULL AFTER `invoiceLink`;
+
+-- Rendi nullable i campi NOT NULL incompatibili con le bozze
+ALTER TABLE `orders`
+  MODIFY COLUMN `coupleName` VARCHAR(300) DEFAULT NULL,
+  MODIFY COLUMN `weddingDate` DATE DEFAULT NULL,
+  MODIFY COLUMN `selectedServices` JSON DEFAULT NULL;
+
+-- ============================================================
+-- MIGRATION: aggiornamento tabella services (listino 2025)
+-- Da eseguire su RDS se la tabella esiste già
+-- ============================================================
 ALTER TABLE `services`
   DROP COLUMN IF EXISTS `minDuration`,
   DROP COLUMN IF EXISTS `maxDuration`,

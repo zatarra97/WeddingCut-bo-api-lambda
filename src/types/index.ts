@@ -45,9 +45,11 @@ export interface OrderEntry {
   orderId: number;
   coupleName: string;
   weddingDate: string;
-  status: "pending" | "in_progress" | "completed" | "cancelled";
+  status: "pending" | "in_progress" | "under_review" | "revision_requested" | "revision_approved" | "completed" | "cancelled";
   adminNotes?: string | null;
   deliveryLink?: string | null;
+  previewLink?: string | null;
+  userRevisionNotes?: string | null;
   sortOrder?: number;
   // Per-entry service config (redesign ordini)
   selectedServices?: any;
@@ -87,9 +89,11 @@ export interface Order {
   servicesTotal?: number | null;
   cameraSurcharge?: number | null;
   totalPrice?: number | null;
-  status: "pending" | "in_progress" | "completed" | "cancelled";
+  status: "draft" | "pending" | "quote_ready" | "in_progress" | "under_review" | "awaiting_payment" | "completed" | "cancelled";
   adminNotes?: string | null;
   deliveryLink?: string | null;
+  invoiceLink?: string | null;
+  proposedTotalPrice?: number | null;
   desiredDeliveryDate?: string | null;
   invoiceUrl?: string | null;
   entries?: OrderEntry[];

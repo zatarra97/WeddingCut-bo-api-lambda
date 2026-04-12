@@ -92,10 +92,42 @@ router.patch(
       }
 
       const body = req.body;
+      const orderId = rows[0].id;
+
+      // Azioni esplicite state machine
+      if (body.action === "accept_quote") {
+        const updates: string[] = ["status = 'quote_ready'"];
+        const aVals: any[] = [];
+        if (body.proposedTotalPrice !== undefined) { updates.push("proposedTotalPrice = ?"); aVals.push(body.proposedTotalPrice); }
+        if (body.desiredDeliveryDate !== undefined) { updates.push("desiredDeliveryDate = ?"); aVals.push(body.desiredDeliveryDate || null); }
+        aVals.push(orderId);
+        await pool.execute(`UPDATE orders SET ${updates.join(", ")} WHERE id = ?`, aVals);
+        res.status(204).send();
+        return;
+      }
+
+      if (body.action === "upload_invoice") {
+        if (!body.invoiceLink) throw createHttpError(400, "invoiceLink obbligatorio.");
+        await pool.execute(
+          "UPDATE orders SET status = 'awaiting_payment', invoiceLink = ? WHERE id = ?",
+          [body.invoiceLink, orderId]
+        );
+        res.status(204).send();
+        return;
+      }
+
+      if (body.action === "confirm_payment") {
+        await pool.execute("UPDATE orders SET status = 'completed' WHERE id = ?", [orderId]);
+        await pool.execute("UPDATE order_entries SET status = 'completed' WHERE orderId = ? AND status != 'cancelled'", [orderId]);
+        res.status(204).send();
+        return;
+      }
+
+      // PATCH generico (campi diretti)
       const sets: string[] = [];
       const vals: any[] = [];
       for (const [key, value] of Object.entries(body)) {
-        if (key === "id" || key === "publicId" || key === "createdAt" || key === "entries") continue;
+        if (key === "id" || key === "publicId" || key === "createdAt" || key === "entries" || key === "action") continue;
         sets.push(`\`${key}\` = ?`);
         vals.push(key === "selectedServices" ? JSON.stringify(value) : value);
       }
@@ -103,7 +135,7 @@ router.patch(
         res.status(204).send();
         return;
       }
-      vals.push(rows[0].id);
+      vals.push(orderId);
       await pool.execute(
         `UPDATE orders SET ${sets.join(", ")} WHERE id = ?`,
         vals

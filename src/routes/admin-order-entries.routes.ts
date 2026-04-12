@@ -35,7 +35,7 @@ router.patch(
       const vals: any[] = [];
 
       const scalarFields = [
-        "adminNotes", "deliveryLink", "status",
+        "adminNotes", "deliveryLink", "previewLink", "userRevisionNotes", "status",
         "deliveryMethod", "materialLink", "materialSizeGb", "cameraCount",
         "exportFps", "exportBitrate", "exportAspect", "exportResolution",
         "servicesTotal", "cameraSurcharge", "totalPrice",
@@ -66,6 +66,25 @@ router.patch(
              ) WHERE id = ?`,
             [orderRows[0].id, orderRows[0].id]
           );
+        }
+
+        // Auto-transizione ordine padre in base agli stati delle entries
+        if (body.status !== undefined) {
+          const [allEntries] = await pool.execute<RowDataPacket[]>(
+            "SELECT status FROM order_entries WHERE orderId = ?",
+            [orderRows[0].id]
+          );
+          const statuses = (allEntries as RowDataPacket[]).map((e) => e.status as string);
+          let newOrderStatus: string | null = null;
+          if (statuses.every((s) => s === "under_review"))           newOrderStatus = "under_review";
+          else if (statuses.some((s) => s === "revision_requested")) newOrderStatus = "in_progress";
+
+          if (newOrderStatus) {
+            await pool.execute(
+              "UPDATE orders SET status = ? WHERE id = ?",
+              [newOrderStatus, orderRows[0].id]
+            );
+          }
         }
       }
 
