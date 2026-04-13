@@ -50,6 +50,8 @@ export interface OrderEntry {
   deliveryLink?: string | null;
   previewLink?: string | null;
   userRevisionNotes?: string | null;
+  generalNotes?: string | null;
+  referenceVideo?: string | null;
   sortOrder?: number;
   // Per-entry service config (redesign ordini)
   selectedServices?: any;

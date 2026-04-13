@@ -49,6 +49,7 @@ router.post(
         materialSizeGb?: number; cameraCount?: string;
         exportFps?: string; exportBitrate?: string; exportAspect?: string; exportResolution?: string;
         servicesTotal?: number; cameraSurcharge?: number; totalPrice?: number;
+        generalNotes?: string | null; referenceVideo?: string | null;
       }> = Array.isArray(body.entries) && body.entries.length > 0
         ? body.entries
         : [{
@@ -59,6 +60,7 @@ router.post(
             exportBitrate: body.exportBitrate, exportAspect: body.exportAspect,
             exportResolution: body.exportResolution, servicesTotal: body.servicesTotal,
             cameraSurcharge: body.cameraSurcharge, totalPrice: body.totalPrice,
+            generalNotes: body.generalNotes, referenceVideo: body.referenceVideo,
           }];
 
       const isBatch = rawEntries.length > 1 ? 1 : 0;
@@ -84,8 +86,8 @@ router.post(
         materialLink: primaryEntry.materialLink || null,
         materialSizeGb: primaryEntry.materialSizeGb || null,
         cameraCount: primaryEntry.cameraCount || null,
-        generalNotes: body.generalNotes || null,
-        referenceVideo: body.referenceVideo || null,
+        generalNotes: primaryEntry.generalNotes || null,
+        referenceVideo: primaryEntry.referenceVideo || null,
         exportFps: primaryEntry.exportFps || null,
         exportBitrate: primaryEntry.exportBitrate || null,
         exportAspect: primaryEntry.exportAspect || null,
@@ -119,10 +121,11 @@ router.post(
              (publicId, orderId, coupleName, weddingDate, status, sortOrder,
               selectedServices, deliveryMethod, materialLink, materialSizeGb, cameraCount,
               exportFps, exportBitrate, exportAspect, exportResolution,
-              servicesTotal, cameraSurcharge, totalPrice)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              servicesTotal, cameraSurcharge, totalPrice,
+              generalNotes, referenceVideo)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
-            randomUUID(), orderId, entry.coupleName || null, entryDate, isDraft ? "pending" : "pending", i,
+            randomUUID(), orderId, entry.coupleName || null, entryDate, "pending", i,
             entry.selectedServices ? JSON.stringify(entry.selectedServices) : null,
             entry.deliveryMethod || null,
             entry.materialLink || null,
@@ -135,6 +138,8 @@ router.post(
             entry.servicesTotal || null,
             entry.cameraSurcharge || null,
             entry.totalPrice || null,
+            entry.generalNotes || null,
+            entry.referenceVideo || null,
           ]
         );
       }

@@ -39,6 +39,7 @@ router.patch(
         "deliveryMethod", "materialLink", "materialSizeGb", "cameraCount",
         "exportFps", "exportBitrate", "exportAspect", "exportResolution",
         "servicesTotal", "cameraSurcharge", "totalPrice",
+        "generalNotes", "referenceVideo",
       ];
       for (const field of scalarFields) {
         if (body[field] !== undefined) {

@@ -210,6 +210,20 @@ ALTER TABLE `orders`
   MODIFY COLUMN `selectedServices` JSON DEFAULT NULL;
 
 -- ============================================================
+-- MIGRATION: generalNotes e referenceVideo spostati a livello entry
+-- ============================================================
+ALTER TABLE `order_entries`
+  ADD COLUMN `generalNotes` TEXT DEFAULT NULL,
+  ADD COLUMN `referenceVideo` VARCHAR(1000) DEFAULT NULL;
+
+-- Copia i valori dall'ordine padre nelle entries già esistenti
+UPDATE `order_entries` oe
+JOIN `orders` o ON o.id = oe.orderId
+SET oe.generalNotes   = o.generalNotes,
+    oe.referenceVideo = o.referenceVideo
+WHERE oe.generalNotes IS NULL AND (o.generalNotes IS NOT NULL OR o.referenceVideo IS NOT NULL);
+
+-- ============================================================
 -- MIGRATION: aggiornamento tabella services (listino 2025)
 -- Da eseguire su RDS se la tabella esiste già
 -- ============================================================
