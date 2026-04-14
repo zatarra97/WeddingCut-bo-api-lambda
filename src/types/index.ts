@@ -35,8 +35,42 @@ export interface Service {
   restrictedToService?: string | null;
   sortOrder?: number | null;
   isActive?: number;
+  discountRole?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+export interface DiscountQuantityTier {
+  id: number;
+  minUnits: number;
+  maxUnits: number | null;
+  discountPct: number;
+  sortOrder: number;
+  isActive: number;
+}
+
+export interface DiscountRule {
+  targetRole?: string;       // ruolo specifico (es. "teaser")
+  targetCategory?: string;   // categoria (es. "extra")
+  type: "new_price" | "pct_off";
+  value: number;
+}
+
+export interface DiscountPackage {
+  id: number;
+  name: string;
+  requiredRoles: string[];
+  requiredRolesAnyOf: string[] | null;  // almeno uno di questi (OR)
+  discounts: DiscountRule[];            // regole di sconto per-ruolo / per-categoria
+  unitCountIfApplied: number | null;    // se presente, i ruoli unità contano come questo numero
+  isBonus: number;
+  sortOrder: number;
+  isActive: number;
+}
+
+export interface DiscountConfig {
+  quantityTiers: DiscountQuantityTier[];
+  packages: DiscountPackage[];
 }
 
 export interface OrderEntry {
@@ -65,6 +99,8 @@ export interface OrderEntry {
   exportResolution?: string | null;
   servicesTotal?: number | null;
   cameraSurcharge?: number | null;
+  packageDiscountPct?: number | null;
+  packageDiscountAmt?: number | null;
   totalPrice?: number | null;
   createdAt?: Date;
   updatedAt?: Date;
@@ -98,6 +134,9 @@ export interface Order {
   proposedTotalPrice?: number | null;
   desiredDeliveryDate?: string | null;
   invoiceUrl?: string | null;
+  quantityDiscountPct?: number | null;
+  quantityDiscountAmt?: number | null;
+  quantityUnitCount?: number | null;
   entries?: OrderEntry[];
   entryCount?: number;
   createdAt?: Date;

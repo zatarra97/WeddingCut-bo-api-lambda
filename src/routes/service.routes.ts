@@ -29,7 +29,7 @@ router.post(
       const fields = [
         "publicId", "name", "description", "durationDescription",
         "category", "pricingType", "basePrice", "percentageValue",
-        "priceTiers", "restrictedToService", "sortOrder", "isActive",
+        "priceTiers", "restrictedToService", "sortOrder", "isActive", "discountRole",
       ];
       const cols = fields.filter((f) => body[f] !== undefined);
       const vals = cols.map((f) =>

@@ -38,7 +38,7 @@ router.patch(
         "adminNotes", "deliveryLink", "previewLink", "userRevisionNotes", "status",
         "deliveryMethod", "materialLink", "materialSizeGb", "cameraCount",
         "exportFps", "exportBitrate", "exportAspect", "exportResolution",
-        "servicesTotal", "cameraSurcharge", "totalPrice",
+        "servicesTotal", "cameraSurcharge", "packageDiscountPct", "packageDiscountAmt", "totalPrice",
         "generalNotes", "referenceVideo",
       ];
       for (const field of scalarFields) {

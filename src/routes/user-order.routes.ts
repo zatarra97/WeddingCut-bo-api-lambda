@@ -50,6 +50,7 @@ router.post(
         exportFps?: string; exportBitrate?: string; exportAspect?: string; exportResolution?: string;
         servicesTotal?: number; cameraSurcharge?: number; totalPrice?: number;
         generalNotes?: string | null; referenceVideo?: string | null;
+        packageDiscountPct?: number | null; packageDiscountAmt?: number | null;
       }> = Array.isArray(body.entries) && body.entries.length > 0
         ? body.entries
         : [{
@@ -96,6 +97,9 @@ router.post(
         servicesTotal: primaryEntry.servicesTotal || null,
         cameraSurcharge: primaryEntry.cameraSurcharge || null,
         totalPrice: orderTotalPrice || null,
+        quantityDiscountPct: body.quantityDiscountPct || null,
+        quantityDiscountAmt: body.quantityDiscountAmt || null,
+        quantityUnitCount: body.quantityUnitCount || null,
         status: isDraft ? "draft" : "pending",
       };
 
@@ -121,9 +125,9 @@ router.post(
              (publicId, orderId, coupleName, weddingDate, status, sortOrder,
               selectedServices, deliveryMethod, materialLink, materialSizeGb, cameraCount,
               exportFps, exportBitrate, exportAspect, exportResolution,
-              servicesTotal, cameraSurcharge, totalPrice,
+              servicesTotal, cameraSurcharge, packageDiscountPct, packageDiscountAmt, totalPrice,
               generalNotes, referenceVideo)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             randomUUID(), orderId, entry.coupleName || null, entryDate, "pending", i,
             entry.selectedServices ? JSON.stringify(entry.selectedServices) : null,
@@ -137,6 +141,8 @@ router.post(
             entry.exportResolution || null,
             entry.servicesTotal || null,
             entry.cameraSurcharge || null,
+            entry.packageDiscountPct ?? null,
+            entry.packageDiscountAmt ?? null,
             entry.totalPrice || null,
             entry.generalNotes || null,
             entry.referenceVideo || null,

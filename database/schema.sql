@@ -224,6 +224,55 @@ SET oe.generalNotes   = o.generalNotes,
 WHERE oe.generalNotes IS NULL AND (o.generalNotes IS NOT NULL OR o.referenceVideo IS NOT NULL);
 
 -- ============================================================
+-- MIGRATION: sistema sconti (package + quantity tiers)
+-- ============================================================
+
+-- discountRole su services
+ALTER TABLE `services`
+  ADD COLUMN IF NOT EXISTS `discountRole` VARCHAR(50) DEFAULT NULL AFTER `isActive`;
+
+-- Tabella soglie sconto quantità
+CREATE TABLE IF NOT EXISTS `discount_quantity_tiers` (
+  `id`          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `minUnits`    INT UNSIGNED NOT NULL,
+  `maxUnits`    INT UNSIGNED DEFAULT NULL,
+  `discountPct` DECIMAL(5,2) NOT NULL,
+  `sortOrder`   SMALLINT NOT NULL DEFAULT 0,
+  `isActive`    TINYINT(1) NOT NULL DEFAULT 1,
+  `updatedAt`   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Dati default (modificabili dall'admin)
+INSERT IGNORE INTO `discount_quantity_tiers` (id, minUnits, maxUnits, discountPct, sortOrder) VALUES
+  (1, 0, 9, 0.00, 0),
+  (2, 10, 19, 5.00, 1),
+  (3, 20, 29, 10.00, 2),
+  (4, 30, NULL, 15.00, 3);
+
+-- Tabella regole sconto pacchetto
+CREATE TABLE IF NOT EXISTS `discount_packages` (
+  `id`            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `name`          VARCHAR(200) NOT NULL,
+  `requiredRoles` JSON NOT NULL,
+  `discountPct`   DECIMAL(5,2) NOT NULL,
+  `isBonus`       TINYINT(1) NOT NULL DEFAULT 0,
+  `sortOrder`     SMALLINT NOT NULL DEFAULT 0,
+  `isActive`      TINYINT(1) NOT NULL DEFAULT 1,
+  `updatedAt`     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Snapshot sconti per entry
+ALTER TABLE `order_entries`
+  ADD COLUMN IF NOT EXISTS `packageDiscountPct` DECIMAL(5,2) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `packageDiscountAmt` DECIMAL(10,2) DEFAULT NULL;
+
+-- Snapshot sconti per ordine
+ALTER TABLE `orders`
+  ADD COLUMN IF NOT EXISTS `quantityDiscountPct`  DECIMAL(5,2) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `quantityDiscountAmt`  DECIMAL(10,2) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `quantityUnitCount`    SMALLINT UNSIGNED DEFAULT NULL;
+
+-- ============================================================
 -- MIGRATION: aggiornamento tabella services (listino 2025)
 -- Da eseguire su RDS se la tabella esiste già
 -- ============================================================
