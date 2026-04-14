@@ -42,8 +42,8 @@ router.get(
         for (const u of adminRes.Users ?? []) {
           if (u.Username) adminUsernames.add(u.Username);
         }
-      } catch {
-        // Se il gruppo non esiste, continua senza
+      } catch (groupErr) {
+        console.error("[admin/users] ListUsersInGroup error:", groupErr);
       }
 
       // Filtro opzionale per email
@@ -72,7 +72,6 @@ router.get(
           enabled: u.Enabled ?? true,
           status: u.UserStatus ?? "",
           createdAt: u.UserCreateDate,
-          lastAccessAt: u.UserLastModifiedDate,
           isAdmin: adminUsernames.has(u.Username ?? ""),
         };
       });
