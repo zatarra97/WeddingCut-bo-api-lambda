@@ -7,7 +7,7 @@ import { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 
 const router = Router();
 
-const JSON_FIELDS = ["priceTiers"];
+const JSON_FIELDS = ["priceTiers", "options"];
 
 function parseJsonFields(row: RowDataPacket): RowDataPacket {
   for (const field of JSON_FIELDS) {
@@ -29,7 +29,7 @@ router.post(
       const fields = [
         "publicId", "name", "description", "durationDescription",
         "category", "pricingType", "basePrice", "percentageValue",
-        "priceTiers", "restrictedToService", "sortOrder", "isActive", "discountRole",
+        "priceTiers", "restrictedToService", "sortOrder", "isActive", "discountRole", "options",
       ];
       const cols = fields.filter((f) => body[f] !== undefined);
       const vals = cols.map((f) =>
@@ -183,7 +183,8 @@ router.put(
         `UPDATE services SET
           publicId = ?, name = ?, description = ?, durationDescription = ?,
           category = ?, pricingType = ?, basePrice = ?, percentageValue = ?,
-          priceTiers = ?, restrictedToService = ?, sortOrder = ?, isActive = ?
+          priceTiers = ?, restrictedToService = ?, sortOrder = ?, isActive = ?,
+          discountRole = ?, options = ?
         WHERE id = ?`,
         [
           body.publicId, body.name, body.description, body.durationDescription ?? null,
@@ -193,6 +194,8 @@ router.put(
           body.restrictedToService ?? null,
           body.sortOrder ?? null,
           body.isActive ?? 1,
+          body.discountRole ?? null,
+          body.options ? JSON.stringify(body.options) : null,
           req.params.id,
         ]
       );

@@ -21,6 +21,13 @@ export interface PriceTier {
   price: number;
 }
 
+export interface ServiceOption {
+  publicId: string;
+  name: string;
+  price: number;
+  discountRole?: string | null;
+}
+
 export interface Service {
   id?: number;
   publicId: string;
@@ -36,6 +43,7 @@ export interface Service {
   sortOrder?: number | null;
   isActive?: number;
   discountRole?: string | null;
+  options?: ServiceOption[] | null;
   createdAt?: Date;
   updatedAt?: Date;
 }

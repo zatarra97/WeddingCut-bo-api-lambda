@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS `services` (
   `restrictedToService` VARCHAR(36)       DEFAULT NULL,
   `sortOrder`           SMALLINT UNSIGNED DEFAULT NULL,
   `isActive`            TINYINT UNSIGNED  NOT NULL DEFAULT 1,
+  `discountRole`        VARCHAR(50)       DEFAULT NULL,
+  `options`             JSON              DEFAULT NULL,
   `createdAt`           TIMESTAMP         NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updatedAt`           TIMESTAMP         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
