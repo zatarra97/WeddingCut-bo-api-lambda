@@ -14,7 +14,7 @@ router.get(
       const [rows] = await pool.execute<RowDataPacket[]>(
         `SELECT publicId, name, description, durationDescription,
                 category, pricingType, basePrice, percentageValue,
-                priceTiers, restrictedToService, sortOrder
+                priceTiers, restrictedToService, sortOrder, discountRole
          FROM services
          WHERE isActive = 1
          ORDER BY sortOrder ASC`
